@@ -12,7 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ## make a simple regression model
 
 ```{r}
-bears <- read.csv(file="BEARS.csv",header = TRUE)
+library(readr)
+bears <- read_csv("BEARS.csv", col_types = cols(AGE = col_number(), SEX = col_factor(levels = c("1", "2")), HEADLEN = col_number(), HEADWTH = col_number(), NECK = col_number(), LENGTH = col_number(), CHEST = col_number(), WEIGHT = col_number()))
 ```
 
 ## Model LENGTH ~ NECK  this is an example  
@@ -23,14 +24,25 @@ plot(LENGTH~NECK,data=bears)
 abline(simp)
 summary.lm(simp)
 ```
-
+  
+Length and Neck are positively correlated in this model, with a slope of around 1.6455 and an adjusted R-squared of 0.7476, which means there's not a lot of error; 74.74% of the data can be explained by the regression line, or 74.76% when adjusted. A p-value of less than 2.2e-16 is also indicative of a correlation; if the null hypothesis (that neck and length are not correlated) were true, there'd be a 0.00000000000000022 chance of the data being exactly as is.  
+The proportion of the data explained by the regression line, or the Multiple R-squared, can be calculated with (a+b)/a when a = TotalMeanModelSquareError and b = TotalFittedSquareError.  
+```{r}
+ResidualStandardError <- sqrt((sum((bears$LENGTH - simp$fitted.values)^2)/simp$df.residual))
+print(ResidualStandardError)
+```
+  
+Above is the square root of the sum of all the squared errors, divided by a modified version of how many there were (simp$df.residual).  
 ## now predict the length of a bear who has a neck of 17, 22 and 26
-
 
 ```{r}
 new <- data.frame(NECK=c(17,22,26))
-predict(simp,new)
 predict(simp,new,se.fit=TRUE)
 ```
+  
+]]fit vs se.fit
 ## Surely there is another variable that can better predict LENGTH than NECK. Find one and compare its performance to that of neck by it value of Adjusted-Rsquared (bigger is better).
 
+```{r}
+TotalFittedSquareError = sum()
+```
