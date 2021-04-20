@@ -16,6 +16,7 @@ require(dplyr)
 require(tidyverse)
 require(ggplot2)
 require(lattice)
+library(car)
 BEARS <- read_csv("BEARS.csv", col_types = cols(AGE = col_number(), SEX = col_factor(levels = c("1", "2")), HEADLEN = col_number(), HEADWTH = col_number(), NECK = col_number(), LENGTH = col_number(), CHEST = col_number(), WEIGHT = col_number()))
 bears <- BEARS %>%
 dplyr::select(AGE, HEADLEN, HEADWTH, NECK, LENGTH, CHEST, WEIGHT)
@@ -84,7 +85,7 @@ summary.lm(simp3)
   
 A model using age is more prone to error (RSE at 7.5) than a model using chest (with an RSE of 4.939) or neck (with an RSE of 5.376). The age model also has a smaller Adjusted R-squared than the other models, which both are greater than 0.7; thus the other models can explain more than 70% of the data while the age model can only explain 50.73% of it. Age is not closely correlated with length.  
 
-## Best subset regression model.  
+# Numerical, inferential; best subset regression model.  
 
 ```{r}
 fullup <- lm(LENGTH~ .,data=bears)
@@ -170,7 +171,6 @@ regsubsets.out <-
 
 summary.out <- summary(regsubsets.out)
 as.data.frame(summary.out$outmat)
-library(car)
 subsets(regsubsets.out,statistic="adjr2",legend="bottomright",main="Adjusted R^2")
 ```
   
