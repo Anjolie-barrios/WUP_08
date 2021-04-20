@@ -16,17 +16,18 @@ require(dplyr)
 require(tidyverse)
 require(ggplot2)
 require(lattice)
-bears <- read_csv("BEARS.csv", col_types = cols(AGE = col_number(), SEX = col_factor(levels = c("1", "2")), HEADLEN = col_number(), HEADWTH = col_number(), NECK = col_number(), LENGTH = col_number(), CHEST = col_number(), WEIGHT = col_number()))
-bears <- bears %>%
+BEARS <- read_csv("BEARS.csv", col_types = cols(AGE = col_number(), SEX = col_factor(levels = c("1", "2")), HEADLEN = col_number(), HEADWTH = col_number(), NECK = col_number(), LENGTH = col_number(), CHEST = col_number(), WEIGHT = col_number()))
+bears <- BEARS %>%
 dplyr::select(AGE, HEADLEN, HEADWTH, NECK, LENGTH, CHEST, WEIGHT)
 ```
-#Introduction, Methods 
-The goal of this report is to find the best model to predict length in bears.  Simple regression  (based on numerical data) will be used to make the models and anova will be used to compare them.  
-#Results 
 
-## make a simple regression model
+# Introduction, Methods 
 
-## Model LENGTH ~ NECK  this is an example  
+The goal of this report is to find the best model for predicting length in bears.  Simple regression  (based on numerical data) will be used to make the models. Anova will be used to compare them afterwards.  
+
+# Results 
+
+## Model LENGTH ~ NECK; this is an example of a simple regression model. 
 
 ```{r}
 simp <- lm(LENGTH~NECK,data=bears)
@@ -36,14 +37,17 @@ summary.lm(simp)
 ```
   
 Length and Neck are positively correlated in this model, with a slope of around 1.6455 and an adjusted R-squared of 0.7476, which means there's not a lot of error; 74.74% of the data can be explained by the regression line, or 74.76% when adjusted. A p-value of less than 2.2e-16 is also indicative of a correlation; if the null hypothesis (that neck and length are not correlated) were true, there'd be a 0.00000000000000022 chance of the data being exactly as is.  
-The proportion of the data explained by the regression line, or the Multiple R-squared, can be calculated with (a+b)/a when a = TotalMeanModelSquareError and b = TotalFittedSquareError.  
+In the below equation, a = TotalMeanModelSquareError and b = TotalFittedSquareError. The proportion of the data explained by the regression line, called the Multiple R-squared, can be calculated with the below equation.  
+$(a+b)/a$
+
 ```{r}
 ResidualStandardError <- sqrt((sum((bears$LENGTH - simp$fitted.values)^2)/simp$df.residual))
 print(ResidualStandardError)
 ```
   
 Above is the square root of the sum of all the squared errors, divided by a modified version of how many there were (simp$df.residual).  
-## now predict the length of a bear who has a neck of 17, 22 and 26
+
+## Predicting the length of a bear who has a neck of 17, 22 and 26
 
 ```{r}
 new <- data.frame(NECK=c(17,22,26))
@@ -53,7 +57,7 @@ predict(simp,new,se.fit=TRUE)
 Note that "fit" refers to predictions (of the most likely length values) and "se.fit" yields a predictions of standard error for the predicted length values. "Df" is the degree of freedom (seen in an earlier block of code). The residual scale is the same as the residual standard error. All of these values were calculated using the regression line plotted above.  
 Neck values of 17, 22, and 26 yield lengths of ~52.7659, 60.9935, and 67.5756; the second prediction is probably the most accurate since its standard error, 0.7556, is the smallest.  
 
-## Surely there is another variable that can better predict LENGTH than NECK. Find one and compare its performance to that of neck by it value of Adjusted-Rsquared (bigger is better).
+## To find a variable that can better predict LENGTH than NECK, compare its performance to that of neck by its  Adjusted R-squared value (bigger is better).  
 
 ```{r}
 #using chest
@@ -78,9 +82,9 @@ abline(simp3)
 summary.lm(simp3)
 ```
   
-A model using age is more prone to error (RSE at 7.5) than a model using chest (RSE of 4.939).  
-  
-##Best subset regression model.  
+A model using age is more prone to error (RSE at 7.5) than a model using chest (with an RSE of 4.939) or neck (with an RSE of 5.376). The age model also has a smaller Adjusted R-squared than the other models, which both are greater than 0.7; thus the other models can explain more than 70% of the data while the age model can only explain 50.73% of it. Age is not closely correlated with length.  
+
+## Best subset regression model.  
 
 ```{r}
 fullup <- lm(LENGTH~ .,data=bears)
@@ -258,6 +262,7 @@ summary.lm(MODL3Sex2)
 ```
   
 While I knew the Adj R-squared was going to fall (and could have infered the RSE would go up), I made the last two models for the sake of comparison. The highest overall p-value is 0.000001, meaning these variables definitely have some sort of correlation.  
+
 #### Sex 2 model comparison
 
 ```{r}
@@ -267,6 +272,7 @@ anova(MODL3Sex2,MODL2Sex2,MODL1Sex2)
 ```
   
 MODL3 is the most similar to fullup, since higher p-values mean the null (in this case, that there is no significant difference) is less likely to be true.  
+
 ##### MODL3 as the base
 
 ```{r}
@@ -277,6 +283,7 @@ anova(MODL3Sex2, fullupSex2)
 ```
   
 The p-values are still high enough to reject the null.  
+
 #### MODL2 as the base
 
 ```{r}
@@ -293,13 +300,14 @@ The p-values are still high enough to reject the null.
 anova(MODL1Sex2, fullupSex2)
 ```
   
-The p-value is still high enough to reject the null. Since these models aren't significantly different, model 3 (headlength-chest) is the most efficient (due to using fewer variables).  
+The p-value is still high enough to reject the null. Since these models aren't significantly different, model 3 (headlength-chest) is the most efficient, since it needs fewer variables.  
+
 # Analysis/ Conclusion
 
 When sex isn't taken into account, a Headlength-Chest model is the best and most efficient to predict length. When L = length, HL = headlength, and C = chest, the model can be represented with this equation.  
 $L = HL(2.9794) + C(0.4285) + 4.7395$  
 When the bear is known to be sex 1 (assumed to be male), a Headlength-Neck model is best (N = neck).  
-$L = HL(2.3876) + N(1.0181) + 5.7319$
+$L = HL(2.3876) + N(1.0181) + 5.7319$  
 When the bear is known to be sex 1 (assumed to be female), a Headlength-Chest model is best.  
 $L = HL(2.6681) + C(0.4585) + 8.5373$  
 Due a small sample size of females (less than 25), however, the above equation cannot be used reliably; instead, use the first equation (which uses data from both sexes) to find length.  
