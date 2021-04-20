@@ -1,0 +1,307 @@
+---
+title: "WUP_08"
+author: "Anjolie Barrios"
+date: "5 April 2021"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+require(dplyr)
+require(tidyverse)
+require(ggplot2)
+require(lattice)
+bears <- read_csv("BEARS.csv", col_types = cols(AGE = col_number(), SEX = col_factor(levels = c("1", "2")), HEADLEN = col_number(), HEADWTH = col_number(), NECK = col_number(), LENGTH = col_number(), CHEST = col_number(), WEIGHT = col_number()))
+bears <- bears %>%
+dplyr::select(AGE, HEADLEN, HEADWTH, NECK, LENGTH, CHEST, WEIGHT)
+```
+#Introduction, Methods 
+The goal of this report is to find the best model to predict length in bears.  Simple regression  (based on numerical data) will be used to make the models and anova will be used to compare them.  
+#Results 
+
+## make a simple regression model
+
+## Model LENGTH ~ NECK  this is an example  
+
+```{r}
+simp <- lm(LENGTH~NECK,data=bears)
+plot(LENGTH~NECK,data=bears)
+abline(simp)
+summary.lm(simp)
+```
+  
+Length and Neck are positively correlated in this model, with a slope of around 1.6455 and an adjusted R-squared of 0.7476, which means there's not a lot of error; 74.74% of the data can be explained by the regression line, or 74.76% when adjusted. A p-value of less than 2.2e-16 is also indicative of a correlation; if the null hypothesis (that neck and length are not correlated) were true, there'd be a 0.00000000000000022 chance of the data being exactly as is.  
+The proportion of the data explained by the regression line, or the Multiple R-squared, can be calculated with (a+b)/a when a = TotalMeanModelSquareError and b = TotalFittedSquareError.  
+```{r}
+ResidualStandardError <- sqrt((sum((bears$LENGTH - simp$fitted.values)^2)/simp$df.residual))
+print(ResidualStandardError)
+```
+  
+Above is the square root of the sum of all the squared errors, divided by a modified version of how many there were (simp$df.residual).  
+## now predict the length of a bear who has a neck of 17, 22 and 26
+
+```{r}
+new <- data.frame(NECK=c(17,22,26))
+predict(simp,new,se.fit=TRUE)
+```
+  
+Note that "fit" refers to predictions (of the most likely length values) and "se.fit" yields a predictions of standard error for the predicted length values. "Df" is the degree of freedom (seen in an earlier block of code). The residual scale is the same as the residual standard error. All of these values were calculated using the regression line plotted above.  
+Neck values of 17, 22, and 26 yield lengths of ~52.7659, 60.9935, and 67.5756; the second prediction is probably the most accurate since its standard error, 0.7556, is the smallest.  
+
+## Surely there is another variable that can better predict LENGTH than NECK. Find one and compare its performance to that of neck by it value of Adjusted-Rsquared (bigger is better).
+
+```{r}
+#using chest
+simp2 <- lm(LENGTH~CHEST,data=bears)
+plot(LENGTH~CHEST,data=bears)
+abline(simp2)
+summary.lm(simp2)
+```
+  
+This model, using Chest, has slightly higher Multiple and Adjusted R-squared values (than the model using Neck) at ~0.791 and 0.7869, meaning Chest is probably a better variable for predicting Length than Neck is; ~79.1% of the data was predicted with this regression. A smaller residual error and similarly small p-value are also promising.  
+```{r}
+new2 <- data.frame(CHEST=c(22,35,40,44,48))
+predict(simp2,new2,se.fit=TRUE)
+```
+  
+As the given values come closer to the mean Chest value, 35.66, the predictions get more and more accurate (the standard errors are lower). The degree of freedom remains the same, given that the number of cases - that is, the number of bears measured - hasn't changed.  
+```{r}
+#using only age
+simp3 <- lm(LENGTH~AGE,data=bears)
+plot(LENGTH~AGE,data=bears)
+abline(simp3)
+summary.lm(simp3)
+```
+  
+A model using age is more prone to error (RSE at 7.5) than a model using chest (RSE of 4.939).  
+  
+##Best subset regression model.  
+
+```{r}
+fullup <- lm(LENGTH~ .,data=bears)
+summary.lm(fullup)
+```  
+The most statistically important value is head length, because it has the lowest p-value; the least important is head width, for the opposite reason. Thus, head width will be thrown out.  
+```{r}
+MODL6 <- lm(LENGTH~ .-HEADWTH,data=bears)
+summary.lm(MODL6)
+```  
+Adjusted R-squared is slightly bigger (0.874 > 0.8714), and residual standard error went down slightly.  
+```{r}
+MODL5 <- lm(LENGTH~ .-HEADWTH-WEIGHT,data=bears)
+summary.lm(MODL5)
+```
+Multiple R- squared is actually slightly less, but Adjusted R-squared is slightly more. Residual standard error is slightly smaller.  
+```{r}
+MODL4 <- lm(LENGTH~ .-HEADWTH-WEIGHT-NECK,data=bears)
+summary.lm(MODL4)
+```
+  
+Multiple R-squared lowered, but Adjusted R-squared got higher, which is promising. Standard error also lowered. You'd think AGE is an important factor, but it isn't, according to the data; it has the biggest p-value.  
+```{r}
+MODL3 <- lm(LENGTH~ .-HEADWTH-WEIGHT-NECK-AGE,data=bears)
+summary.lm(MODL3)
+```
+  
+The trend of M R-squared decreasing and Adj R-squared growing continues; standard error also decreases. Using a singular explanatory variable surely is worse than just two, but it'll be tested anyway. This model is better than even the fullup, having lower RSE and higher Adj R-squared.  
+```{r}
+MODL2 <- lm(LENGTH~ .-HEADWTH-WEIGHT-NECK-AGE-CHEST,data=bears)
+summary.lm(MODL2)
+```
+As predicted, this model is worse, with higher standard error and lower adjusted R-squared. Below is an automated version of what we just did and a comparison (using anova) between our version and the automated one.  
+```{r}
+library(leaps)
+regsubsets.out <-
+    regsubsets(LENGTH ~ .,
+               data = bears,
+               nbest = 1,       # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               force.in = NULL, force.out = NULL,
+               method = "exhaustive")
+
+summary.out <- summary(regsubsets.out)
+as.data.frame(summary.out$outmat)
+library(car)
+subsets(regsubsets.out,statistic="adjr2",legend="bottomright",main="Adjusted R^2")
+```
+  
+The head length-chest model is the best one according to this graphic, since it has the highest Adjusted R- squared value (meaning a greater percentage of the data can be explained by that model) and uses fewer variables (than other models with similar AdjR^2 values), making it the most efficient.  
+```{r}
+best.model <- lm(LENGTH~ .-HEADWTH-WEIGHT-NECK-AGE,data=bears)
+anova(best.model,fullup)
+```
+  The null hypothesis is that the models have the same amount of error unaccounted for. Here, a high p-value of 0.8203 means that the alternate hypothesis, that these models are significantly different from each other, will be rejected in favor of the null. Since these models aren't significantly different, the more efficient one, using only head length and chest to predict length, is the best.  
+  
+## Divided by Sex
+
+```{r}
+xyplot(LENGTH~AGE, group = SEX, data=BEARS, autokey=TRUE)
+xyplot(WEIGHT~AGE, group = SEX, data=BEARS, autokey=TRUE)
+xyplot(CHEST~AGE, group = SEX, data=BEARS, autokey=TRUE)
+xyplot(HEADLEN~AGE, group = SEX, data=BEARS, autokey=TRUE)
+```
+  
+Sex 1 is in blue, and Sex 2 is in pink. When age is at or below 50, length and weight are similar between the sexes (and they're dissimilar above that). When age is at or below 25, Chest and head length are similar between the sexes (and they're dissimilar above that).  
+
+### Sex 1 only 
+
+```{r}
+#make subset
+sex1 <- subset(BEARS, SEX=="1")
+sex1 <- sex1 %>%
+select(AGE, HEADLEN, HEADWTH, NECK, LENGTH, CHEST, WEIGHT)
+#make models
+regsubsets.out <-
+    regsubsets(LENGTH ~ .,
+               data = sex1,
+               nbest = 1,       # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               force.in = NULL, force.out = NULL,
+               method = "exhaustive")
+
+summary.out <- summary(regsubsets.out)
+as.data.frame(summary.out$outmat)
+library(car)
+subsets(regsubsets.out,statistic="adjr2",legend="bottomright",main="Adjusted R^2")
+```
+  
+The A-HEADL-N model has the highest Adj R-squared, but HEADL-N might be chosen anyway due to using fewer variables.  
+```{r}
+#define fullup for sex1
+fullupSex1 <- lm(LENGTH~ .,data=sex1)
+summary.lm(fullupSex1)
+```
+  
+Compared to the fullup with both sexes (with an RSE of 3.838 and Adj. R-squared of 0.8714), this model seems slightly more accurate; it's less prone to error, and a greater percentage of the data (of bears of sex 1) can be explained by this model. The most important variable is headlength (the only one with a p-value below 0.05), as it is when sex isn't considered. Chest is the least important variable here, with a p-value of 0.959.  
+```{r}
+#define Age-Headlength-Neck
+MODL1Sex1 <- lm(LENGTH~ .-HEADWTH-CHEST-WEIGHT,data=sex1)
+summary.lm(MODL1Sex1)
+```
+  
+This is an improvement, with slightly lower RSE and slightly higher Adj R-squared.  
+
+```{r}
+#define Headlength-Neck
+MODL2Sex1 <- lm(LENGTH~ .-HEADWTH-CHEST-WEIGHT-AGE,data=sex1)
+summary.lm(MODL2Sex1)
+```
+  
+As expected, this is a slight downgrade. I made this model, however, because its Adj R-squared value is close enough that it might be the better model anyway, due to using less variables and thus being more efficient.  
+
+#### Sex 1 model comparison
+
+```{r}
+
+anova(MODL2Sex1,MODL1Sex1,fullupSex1)
+anova(MODL2Sex1,MODL1Sex1)
+anova(MODL1Sex1,fullupSex1)
+anova(MODL2Sex1,fullupSex1)
+
+```
+  
+The null hypothesis is that these models aren't significantly different. Model 1 and fullup have the greatest p-value (and thus are the most similar), but since all the p-values are greater than 0.05 the null hypothesis can be rejected for all of the comparisons. Thus, the Headlength-Neck model is the most efficient.  
+
+### Sex 2 only
+
+```{r}
+#make subset
+sex2 <- subset(BEARS, SEX=="2")
+sex2 <- sex2 %>%
+select(AGE, HEADLEN, HEADWTH, NECK, LENGTH, CHEST, WEIGHT)
+#make models
+regsubsets.out <-
+    regsubsets(LENGTH ~ .,
+               data = sex2,
+               nbest = 1,       # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               force.in = NULL, force.out = NULL,
+               method = "exhaustive")
+
+summary.out <- summary(regsubsets.out)
+as.data.frame(summary.out$outmat)
+library(car)
+subsets(regsubsets.out,statistic="adjr2",legend="bottomright",main="Adjusted R^2")
+```
+  
+The model with the highest Adj R-squared is Age-Headlength-Neck-Chest. As age and Neck get removed, the models become increasingly ineffective until Headlength-Chest has a lower Adj R-squared than the fullup.  
+```{r}
+#define fullup for sex2
+fullupSex2 <- lm(LENGTH~ .,data=sex2)
+summary.lm(fullupSex2)
+```
+  
+The null hypothesis is that the variables in the model have no association with each other. The most important variable is Neck, but the least important is weight.  
+```{r}
+#define A-HL-N-C
+MODL1Sex2 <- lm(LENGTH~ .-HEADWTH-WEIGHT,data=sex2)
+summary.lm(MODL1Sex2)
+```
+  
+Chest has become the most important with a p-value of 0.0115 (age is the least important). A lower overall p-value (0.000004) than in the fullup (0.0000965) suggests that removing head width and weight made the null hypothesis less likely; if it were true, there's a smaller chance of the data being as it is.  
+```{r}
+#define HL-N-C
+MODL2Sex2 <- lm(LENGTH~ .-HEADWTH-WEIGHT-AGE,data=sex2)
+summary.lm(MODL2Sex2)
+```
+  
+See the description below.  
+```{r}
+#define HL-C
+MODL3Sex2 <- lm(LENGTH~ .-HEADWTH-WEIGHT-AGE-NECK,data=sex2)
+summary.lm(MODL3Sex2)
+```
+  
+While I knew the Adj R-squared was going to fall (and could have infered the RSE would go up), I made the last two models for the sake of comparison. The highest overall p-value is 0.000001, meaning these variables definitely have some sort of correlation.  
+#### Sex 2 model comparison
+
+```{r}
+#every model. Last model listed gets compared w/ everything else. 
+anova(MODL3Sex2,MODL2Sex2,MODL1Sex2,fullupSex2)
+anova(MODL3Sex2,MODL2Sex2,MODL1Sex2)
+```
+  
+MODL3 is the most similar to fullup, since higher p-values mean the null (in this case, that there is no significant difference) is less likely to be true.  
+##### MODL3 as the base
+
+```{r}
+#MODL3Sex2
+anova(MODL3Sex2, MODL2Sex2)
+anova(MODL3Sex2, MODL1Sex2)
+anova(MODL3Sex2, fullupSex2)
+```
+  
+The p-values are still high enough to reject the null.  
+#### MODL2 as the base
+
+```{r}
+#MODL2Sex2
+anova(MODL2Sex2, MODL1Sex2)
+anova(MODL2Sex2, fullupSex2)
+```
+  
+The p-values are still high enough to reject the null.  
+
+#### MODL 1 vs fullup
+
+```{r}
+anova(MODL1Sex2, fullupSex2)
+```
+  
+The p-value is still high enough to reject the null. Since these models aren't significantly different, model 3 (headlength-chest) is the most efficient (due to using fewer variables).  
+# Analysis/ Conclusion
+
+When sex isn't taken into account, a Headlength-Chest model is the best and most efficient to predict length. When L = length, HL = headlength, and C = chest, the model can be represented with this equation.  
+$L = HL(2.9794) + C(0.4285) + 4.7395$  
+When the bear is known to be sex 1 (assumed to be male), a Headlength-Neck model is best (N = neck).  
+$L = HL(2.3876) + N(1.0181) + 5.7319$
+When the bear is known to be sex 1 (assumed to be female), a Headlength-Chest model is best.  
+$L = HL(2.6681) + C(0.4585) + 8.5373$  
+Due a small sample size of females (less than 25), however, the above equation cannot be used reliably; instead, use the first equation (which uses data from both sexes) to find length.  
+  
+In future reports, it would be wise to check if the sample size is significant (greater than 25 or 30) before comparing models from that sample, to avoid solving for statistically useless models.  
