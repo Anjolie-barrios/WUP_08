@@ -312,4 +312,4 @@ When the bear is known to be sex 1 (assumed to be female), a Headlength-Chest mo
 $L = HL(2.6681) + C(0.4585) + 8.5373$  
 Due a small sample size of females (less than 25), however, the above equation cannot be used reliably; instead, use the first equation (which uses data from both sexes) to find length.  
   
-In future reports, it would be wise to check if the sample size is significant (greater than 25 or 30) before comparing models from that sample, to avoid solving for statistically useless models.  
+In future reports, it would be wise to check if the sample size is significant (greater than 25 or 30) before comparing models from that sample, to avoid solving for statistically useless models.   
